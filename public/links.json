@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "networks": {
+    "voice_trip_concierge": {
+      "city_notes": "city_notes"
+    }
+  }
+}
