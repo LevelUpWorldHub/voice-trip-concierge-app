@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "description": "Short city notes for the active trip. This peer does not book, browse private context, or see the caller's model key."
+  },
+  "tools": [
+    {
+      "name": "note_keeper",
+      "function": {
+        "description": "Answers with grounded city notes and refuses to invent live events.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "inquiry": { "type": "string" }
+          },
+          "required": ["inquiry"]
+        }
+      },
+      "instructions": "You are a peer network loaded inside the caller's browser. You do not receive the caller's API key or private context. Say that live city notes, when enabled, come from the page's optional Grok pulse, and otherwise say you have no live feed. Do not invent headlines.",
+      "tools": []
+    }
+  ]
+}

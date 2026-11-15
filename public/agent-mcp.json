@@ -1,0 +1,5 @@
+{
+  "protocol": "nsdeploy-agent-mcp/v1",
+  "available": false,
+  "reason": "Static hosting does not expose a server-side MCP facade. Load the network in the browser runtime instead."
+}

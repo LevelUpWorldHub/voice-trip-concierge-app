@@ -1,0 +1,80 @@
+{
+  "brand": "Voice Trip Concierge",
+  "networks": [
+    {
+      "name": "voice_trip_concierge",
+      "front_man": "front_desk",
+      "hocon": "./voice_trip_concierge.network.json",
+      "description": "Plans a multi-day trip, revises one stop, and watches hours, weather, and drive time.",
+      "sample_queries": [
+        "Plan 3 days in Seattle for food and parks",
+        "Swap the art museum for a market",
+        "Check whether anything is closed or too far"
+      ]
+    },
+    {
+      "name": "city_notes",
+      "front_man": "note_keeper",
+      "hocon": "./city_notes.network.json",
+      "description": "Peer network that refuses to invent local events."
+    }
+  ],
+  "llm_router": {
+    "base_url": "",
+    "mock": true,
+    "byok_router": "",
+    "note": "The default router is on-page and deterministic, so the host pays nothing. Visitors may bring an OpenAI-compatible router, model, and key. The main trip screen uses Firebase AI Logic hybrid inference for intent and narration when that project is configured."
+  },
+  "allowed_peers": [],
+  "peer_policy": {
+    "mode": "closed",
+    "deny_origins": [],
+    "note": "The runtime asks before contacting any origin, including this site's city_notes network. Approval lasts for the page session."
+  },
+  "agent_mcp": {
+    "protocol": "nsdeploy-agent-mcp/v1",
+    "network": "voice_trip_concierge",
+    "front_man": "front_desk",
+    "available": false,
+    "reason": "This static deployment has no public MCP facade. Other sites load the published network in their own browser."
+  },
+  "linking": {
+    "protocol": "nsdeploy-link/v1",
+    "exports": [
+      {
+        "network": "voice_trip_concierge",
+        "front_man": "front_desk",
+        "url": "voice_trip_concierge"
+      },
+      {
+        "network": "city_notes",
+        "front_man": "note_keeper",
+        "url": "city_notes"
+      }
+    ],
+    "imports": [
+      {
+        "name": "city_notes",
+        "network": "city_notes"
+      }
+    ]
+  },
+  "deployment": {
+    "mode": "static",
+    "self_contained_runtime": true,
+    "browser_runtime": "/runtime/index.js",
+    "direct_byok": true,
+    "public_mcp_facade": false
+  },
+  "actions": {
+    "version": 1,
+    "module": "./runtime/trip-actions.js",
+    "agentTools": [
+      "website_read_trip_state",
+      "website_plan_trip",
+      "website_revise_stop",
+      "website_propose_swaps",
+      "website_apply_swap"
+    ]
+  }
+}
