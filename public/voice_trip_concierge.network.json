@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "description": "Voice Trip Concierge. Plans a multi-stop trip, revises one stop at a time, and asks before it changes the page."
+  },
+  "tools": [
+    {
+      "name": "front_desk",
+      "function": {
+        "description": "Front agent for trip planning. Delegates planning, autonomy checks, narration, and city notes.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "inquiry": { "type": "string", "description": "What the traveler asked." }
+          },
+          "required": ["inquiry"]
+        }
+      },
+      "instructions": "You are the front desk of Voice Trip Concierge, built by Level Up Inc. Delegate trip planning and revisions to planner_specialist. Delegate closure, weather, and long-drive checks to autonomy_watch. Delegate a spoken summary to narrator when the traveler asks to hear the plan. Delegate local-note questions to the city_notes peer. Never invent places, hours, or prices. Never ask for or repeat an API key. Summarize tool results in plain sentences.",
+      "tools": ["planner_specialist", "autonomy_watch", "narrator", "city_notes"]
+    },
+    {
+      "name": "planner_specialist",
+      "function": {
+        "description": "Builds or revises the itinerary using the website's planner tools.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "inquiry": { "type": "string" }
+          },
+          "required": ["inquiry"]
+        }
+      },
+      "instructions": "Use website_plan_trip for a new trip and website_revise_stop when the traveler names one stop to change. Pass the traveler's words as request. Do not claim a change succeeded unless the tool result says so. Leave every unspecified stop alone.",
+      "tools": ["website_plan_trip", "website_revise_stop"]
+    },
+    {
+      "name": "autonomy_watch",
+      "function": {
+        "description": "Checks opening hours, weather, and drive legs, and can apply one approved swap.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "inquiry": { "type": "string" }
+          },
+          "required": ["inquiry"]
+        }
+      },
+      "instructions": "Call website_propose_swaps to inspect the current itinerary. Call website_apply_swap only when the traveler explicitly approves. Report the tool result. Do not invent a closure or a forecast.",
+      "tools": ["website_read_trip_state", "website_propose_swaps", "website_apply_swap"]
+    },
+    {
+      "name": "narrator",
+      "function": {
+        "description": "Turns the current trip into a short spoken summary.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "inquiry": { "type": "string" }
+          },
+          "required": ["inquiry"]
+        }
+      },
+      "instructions": "Speak in two or three short sentences a traveler can hear. Use only the inquiry and tool results. No markdown, no invented stops.",
+      "tools": ["website_read_trip_state"]
+    }
+  ]
+}
