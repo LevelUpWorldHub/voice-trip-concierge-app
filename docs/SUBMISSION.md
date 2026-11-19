@@ -20,7 +20,7 @@ Deadline: Monday 30 November 2026, 2:00 PM PT. Target the form for 25–27 Novem
 | Web (Chrome), Gemini Nano via Firebase AI Logic | Desktop Chrome 139+ with the Prompt API flag. Cloud model falls back through the same SDK. See `docs/FIREBASE_SETUP.md`. |
 | App Check required; debug tokens allowed; secrets not committed | `ReCaptchaEnterpriseProvider` when `NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY` is set. Debug token env is documented and left empty in git. |
 | Open-source license visible at the repo root | `LICENSE` (Apache-2.0, the preferred license). |
-| Public GitHub or GitLab repo with source, assets, and run instructions | This tree has the app, `demo/voice-trip-concierge.mp4`, and `README.md`. Devpost accepts GitHub or GitLab only, so mirror this private Origin repo to a public GitHub or GitLab remote before submitting. |
+| Public GitHub or GitLab repo with source, assets, and run instructions | Public repo: https://github.com/LevelUpWorldHub/voice-trip-concierge-app. It includes the app source, canonical Apache-2.0 `LICENSE` (copyright in `NOTICE`), `docs/PRODUCT_ANALYSIS.md`, and `README.md` run instructions. Add `demo/voice-trip-concierge.mp4` and `app/favicon.ico` from this tree if they are not already on `main`. |
 | Text description: Firebase use, features, value | Paste the description below. |
 | Demo video, at most 3 minutes, English, shows the product working, public on YouTube | `demo/voice-trip-concierge.mp4` is captions-only and under 3 minutes. Upload it to YouTube (public) and paste the link. Voice-over script: `docs/NARRATION.md`. |
 | Testing access, free, no secrets in the instructions | No account. No API key. Open the Vercel URL or `npm run dev`, then **Load Seattle sample**. Do not paste Firebase or xAI keys into the Devpost form. |
@@ -43,11 +43,23 @@ If Firebase is not configured, a deterministic parser and spoken template keep t
 
 ### Still yours before you submit
 
+The public GitHub repo is https://github.com/LevelUpWorldHub/voice-trip-concierge-app. Devpost can use that URL. It includes the canonical Apache-2.0 `LICENSE` (copyright in `NOTICE`) and `docs/PRODUCT_ANALYSIS.md`. Confirm the GitHub About panel shows Apache-2.0.
+
+`demo/voice-trip-concierge.mp4` and `app/favicon.ico` may still need a binary push from a machine signed into GitHub as LevelUpWorldHub (this environment can update text files on that repo, but not git-push binaries as that account):
+
+```bash
+git remote add github https://github.com/LevelUpWorldHub/voice-trip-concierge-app.git
+git add demo/voice-trip-concierge.mp4 app/favicon.ico
+git commit -m "Add demo video and favicon"
+git push github main
+```
+
+Then:
+
 - Create the Firebase project and fill the env vars in `docs/FIREBASE_SETUP.md`. Confirm the badge can show on-device or cloud on your Chrome.
-- Mirror the repo to public GitHub or GitLab. Devpost does not take an Origin-only URL.
-- Deploy on Vercel (env list below) and put that URL in the testing field.
+- Deploy on Vercel from the public repo (env list below) and put that URL in the testing field. Vercel is not connected in this session, so use the Publish button or import the GitHub repo at https://vercel.com/new.
 - Upload `demo/voice-trip-concierge.mp4` to YouTube as a public English video. Record a voice pass from `docs/NARRATION.md` if you want narration on top of the burned-in captions. Keep the upload at or under 3 minutes.
-- Sign in to Devpost and submit before 30 November 2026, 2:00 PM PT. Select Web/Chrome.
+- Sign in to Devpost and submit before 30 November 2026, 2:00 PM PT. Select Web/Chrome. Paste the description below, the GitHub URL, the YouTube link, and the Vercel URL.
 
 ## Vercel env vars
 
