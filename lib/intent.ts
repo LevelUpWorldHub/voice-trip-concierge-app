@@ -85,14 +85,22 @@ export function paceIn(text: string): Pace {
   return "balanced";
 }
 
+const DESTINATION_STOP =
+  "(?:for|with|to|about|around|near|starting|focusing|focused|featuring|including|that|where|in|on|from|during|next|this|over)";
+const NOT_A_PLACE = /^(food|parks|museums|a|an|the|day|days|plan|go|visit|travel|spend|explore|see|stay|be|get|me|us|my|our)$/iu;
+const DESTINATION_PATTERN = new RegExp(
+  `(?<![\\p{L}\\p{N}])(?:in|around|to|visit|visiting)\\s+(\\p{L}[\\p{L}\\p{M}.'\u2019-]*(?:\\s+(?!${DESTINATION_STOP}(?![\\p{L}\\p{M}]))\\p{L}[\\p{L}\\p{M}.'\u2019-]*){0,2})(?=\\s+${DESTINATION_STOP}(?![\\p{L}\\p{M}])|\\s*[,.!?;:()]|\\s*$)`,
+  "giu",
+);
+
+/** City after in/around/to, stopping before connector words or punctuation. Unicode letters allowed. */
 export function destinationIn(text: string): string | undefined {
-  const match = text.match(
-    /\b(?:in|around|to)\s+([a-zA-Z][a-zA-Z.'-]*(?:\s+[a-zA-Z][a-zA-Z.'-]*){0,2})(?=\s+(?:for|with|focused|featuring)\b|[,.]|$)/i,
-  );
-  if (!match) return undefined;
-  const place = match[1].trim();
-  if (/^(food|parks|museums|a|an|the|day|days)$/i.test(place)) return undefined;
-  return titleCase(place);
+  for (const match of text.normalize("NFC").matchAll(DESTINATION_PATTERN)) {
+    const place = match[1].replace(/[.'\u2019-]+$/u, "").trim();
+    if (!place || NOT_A_PLACE.test(place)) continue;
+    return titleCase(place);
+  }
+  return undefined;
 }
 
 export function nextMissing(partial: Partial<TripRequest>): Slot | null {

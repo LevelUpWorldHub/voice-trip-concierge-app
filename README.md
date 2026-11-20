@@ -1,5 +1,7 @@
 # Voice Trip Concierge
 
+**Live demo:** [https://mallbot-trip.vercel.app](https://mallbot-trip.vercel.app)
+
 Voice Trip Concierge is an autonomous trip planner for the browser. You speak or type. It asks only for the city, the number of days, or the interests it still does not have, then builds a multi-stop itinerary from OpenStreetMap and driving times. If a stop is closed, rained on, or a long drive away, it proposes one swap and waits for a tap.
 
 Built by Mark Yukhimets, Level Up Inc, for Firebase #BuildHybridAI 2026 and the Cognizant Open Agentic Web Challenge.

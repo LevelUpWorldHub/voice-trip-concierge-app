@@ -1,11 +1,7 @@
 import { connection } from "next/server";
-import { errorMessage, fetchJson, rethrowIfNeeded } from "@/lib/server/upstream";
+import { errorMessage, rethrowIfNeeded } from "@/lib/server/upstream";
+import { queryOverpass, readCoordinate, upstreamFailure } from "@/lib/server/overpass";
 import { INTERESTS, type Interest, type Place } from "@/lib/types";
-
-const OVERPASS_ENDPOINTS = [
-  "https://overpass.openstreetmap.fr/api/interpreter",
-  "https://overpass-api.de/api/interpreter",
-];
 
 const QUERIES: Record<Interest, string> = {
   food: 'node["amenity"~"restaurant|cafe"]',
@@ -31,11 +27,11 @@ function interestFromTags(tags: Record<string, string>): Interest | null {
 export async function GET(request: Request) {
   await connection();
   const params = new URL(request.url).searchParams;
-  const lat = Number(params.get("lat"));
-  const lon = Number(params.get("lon"));
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return Response.json({ ok: false, error: "Missing coordinates." });
+  const coords = readCoordinate(params.get("lat"), params.get("lon"));
+  if (!coords) {
+    return Response.json({ ok: false, error: "Missing coordinates." }, { status: 400 });
   }
+  const { lat, lon } = coords;
   const requested = (params.get("interests") || "")
     .split(",")
     .map((item) => item.trim())
@@ -44,29 +40,12 @@ export async function GET(request: Request) {
   const clauses = interests
     .map((interest) => `${QUERIES[interest]}(around:3500,${lat},${lon});`)
     .join("\n");
-  const query = `[out:json][timeout:8];(\n${clauses}\n);out body 40;`;
+  const query = `[out:json][timeout:6];(\n${clauses}\n);out body 40;`;
   try {
-    let result: Awaited<ReturnType<typeof fetchJson>> | null = null;
-    for (const endpoint of OVERPASS_ENDPOINTS) {
-      const attempt = await fetchJson(
-        endpoint,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ data: query }),
-        },
-        8000,
-      );
-      const elements = (attempt.data as { elements?: unknown[] } | null)?.elements;
-      if (attempt.ok && Array.isArray(elements)) {
-        result = attempt;
-        break;
-      }
-      result = attempt;
-    }
-    const elements = (result?.data as { elements?: unknown[] } | null)?.elements;
-    if (!result?.ok || !Array.isArray(elements)) {
-      return Response.json({ ok: false, error: result?.error || "Places were unavailable.", latencyMs: result?.latencyMs });
+    const result = await queryOverpass(query);
+    const elements = result.elements;
+    if (!elements) {
+      return upstreamFailure(result.error || "Places were unavailable.", result.attempts, result.latencyMs);
     }
     const places: Place[] = [];
     const seen = new Set<string>();
@@ -100,6 +79,6 @@ export async function GET(request: Request) {
     return Response.json({ ok: true, places, latencyMs: result.latencyMs });
   } catch (error) {
     rethrowIfNeeded(error);
-    return Response.json({ ok: false, error: errorMessage(error) });
+    return upstreamFailure(errorMessage(error), [], 0);
   }
 }

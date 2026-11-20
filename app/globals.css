@@ -128,3 +128,12 @@
     @apply font-sans;
   }
 }
+/* Mobile: keep the two-pane grid inside the viewport (Wave 1 390px overflow fix). */
+.grid.flex-1 > section {
+  min-width: 0;
+}
+@media (max-width: 1023.98px) {
+  .grid.flex-1 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
