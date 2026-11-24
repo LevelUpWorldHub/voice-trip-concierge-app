@@ -69,4 +69,42 @@ describe("opening hours used by the watch", () => {
     };
     expect(inspectItinerary(only, [openPlace], () => ({ minutes: 5, meters: 400, source: "estimate" }))).toEqual([]);
   });
+
+  it("does not treat unknown hours as open, and will not swap to an unconfirmed place", () => {
+    const sample = buildSeattleSample();
+    const unknown: Place = {
+      id: "mystery",
+      name: "Mystery Hall",
+      interest: "museums",
+      lat: 47.608,
+      lon: -122.337,
+      indoor: true,
+    };
+    const closed = sample.days[0].stops.find((stop) => stop.placeId === "sam")!;
+    const onlyUnknown = {
+      ...sample,
+      days: [{ ...sample.days[0], stops: [closed], legs: [] }],
+    };
+    expect(inspectItinerary(onlyUnknown, [unknown], () => ({ minutes: 5, meters: 400, source: "estimate" }))).toEqual([]);
+
+    const withKnownOpen: Place = {
+      id: "known",
+      name: "Known Gallery",
+      interest: "museums",
+      lat: 47.608,
+      lon: -122.336,
+      indoor: true,
+      openingHours: "Mo-Su 09:00-18:00",
+    };
+    const unknownStop = { ...closed, id: "mystery-d1", placeId: "mystery", name: "Mystery Hall", openingHours: undefined };
+    const unknownDay = {
+      ...sample,
+      days: [{ ...sample.days[0], weather: { summary: "Clear", tempC: 12, precipProb: 0, code: 0 }, stops: [unknownStop], legs: [] }],
+    };
+    const proposals = inspectItinerary(unknownDay, [unknown, withKnownOpen], () => ({ minutes: 5, meters: 400, source: "estimate" }));
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].reason).toBe("unknown-hours");
+    expect(proposals[0].replacement.id).toBe("known");
+    expect(proposals[0].detail).toMatch(/not treated as open/);
+  });
 });

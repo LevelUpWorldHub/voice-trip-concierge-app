@@ -8,9 +8,12 @@ export function narrateItinerary(itinerary: Itinerary): string {
     const names = day.stops.map((stop) => `${stop.name} at ${stop.arrival}`).join(", then ");
     return `Day ${day.day}: ${names}.`;
   });
-  const prefix = itinerary.sampleLabel
-    ? `${itinerary.sampleLabel}. `
-    : `${itinerary.days.length}-day ${itinerary.destination}. `;
+  const prefix =
+    itinerary.sampleLabel && itinerary.sampleStandsIn === false && itinerary.askedFor
+      ? `This is not a plan for ${itinerary.askedFor}. ${itinerary.sampleLabel}. The stops are in Seattle. `
+      : itinerary.sampleLabel
+        ? `${itinerary.sampleLabel}. `
+        : `${itinerary.days.length}-day ${itinerary.destination}. `;
   return `${prefix}${lines.join(" ")}`;
 }
 

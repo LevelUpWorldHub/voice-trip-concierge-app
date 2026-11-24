@@ -32,11 +32,11 @@ Two things are still waiting. Tuesday is likely rain on an outdoor stop. The dri
 
 ## On Status
 
-This is the self-healing panel. A timeout retries, and if the map services stay down the screen keeps the labeled Seattle sample instead of going blank. Firebase and Grok are listed as off, because their keys are not set.
+This is the self-healing panel. A timeout retries, and if the map services stay down the screen keeps the labeled Seattle sample instead of going blank. Firebase is listed as off when its web config is absent. Grok is not offered in this hackathon build.
 
-## On Grok
+## On extra model routes
 
-City pulse is the optional xAI note. It asks Grok for a short local citation and it does not rebuild the itinerary. Without `XAI_API_KEY` it stays off, and the planner does not care.
+Grok city pulse and the bring-your-own-key router stay off unless `NEXT_PUBLIC_ENABLE_EXTRA_AI=true`. The hackathon build does not call them, and the screen does not offer them. Inference that does run goes through Firebase AI Logic.
 
 ## Close
 

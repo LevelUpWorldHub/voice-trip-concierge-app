@@ -21,7 +21,7 @@ function pointOf(stop: Stop): Place {
 }
 
 function isAcceptable(place: Place, date: string, arrival: string): boolean {
-  return isOpen(place.openingHours, date, arrival) !== "closed";
+  return isOpen(place.openingHours, date, arrival) === "open";
 }
 
 function nearest(
@@ -61,6 +61,22 @@ export function inspectItinerary(
             day: day.day,
             reason: "closed",
             detail: `${stop.name} is closed at ${stop.arrival} on ${day.date}. ${replacement.name} is open nearby.`,
+            replacement,
+          });
+          return;
+        }
+      }
+      if (hours === "unknown") {
+        const replacement =
+          nearest(catalog, around, used, day.date, stop.arrival, (place) => place.interest === stop.interest) ??
+          nearest(catalog, around, used, day.date, stop.arrival, () => true);
+        if (replacement) {
+          proposals.push({
+            id: `unknown-${stop.id}`,
+            stopId: stop.id,
+            day: day.day,
+            reason: "unknown-hours",
+            detail: `Hours for ${stop.name} are unknown, so this stop is not treated as open. ${replacement.name} is confirmed open at ${stop.arrival}.`,
             replacement,
           });
           return;

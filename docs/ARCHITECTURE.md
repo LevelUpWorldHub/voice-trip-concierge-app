@@ -49,12 +49,12 @@ flowchart TD
 
 `agent-manifest.json` is the public index. `voice_trip_concierge.network.json` is the front network: `front_desk` delegates to `planner_specialist`, `autonomy_watch`, and `narrator`. `links.json` points `city_notes` at the second published network. The Agents tab loads `/runtime/index.js` behavior by importing that runtime, and other sites can fetch the JSON because those files send `Access-Control-Allow-Origin: *`.
 
-The default agent router is local and free. A visitor may save an OpenAI-compatible base URL, model, and key in `localStorage`. That key is attached only to the router request.
+The default agent router is local and free. The bring-your-own-key form is hidden unless `NEXT_PUBLIC_ENABLE_EXTRA_AI` is exactly `true`. The live site leaves that flag unset, so the Agents tab stays on the deterministic router. When the flag is on, a visitor may save an OpenAI-compatible base URL, model, and key in `localStorage`. That key is attached only to the router request. Trip planning still uses Firebase AI Logic.
 
 ## Self-healing
 
-Every upstream call has a timeout and retries. Nominatim or Overpass failure replaces the trip with the Seattle sample and says so. OSRM failure keeps the places and labels drive times as estimates. Open-Meteo failure pauses rain checks. Grok failure only clears the city-pulse card. Firebase failure keeps the local parser. A React error boundary replaces a crashed tree with a retry button instead of a blank page.
+Every upstream call has a timeout and retries. Nominatim or Overpass failure replaces the trip with the Seattle sample and says so. OSRM failure keeps the places and labels drive times as estimates. Open-Meteo failure pauses rain checks. Grok is not called unless `NEXT_PUBLIC_ENABLE_EXTRA_AI` is `true`. When that flag is on, a Grok failure only clears the city-pulse card. Firebase failure keeps the local parser. A React error boundary replaces a crashed tree with a retry button instead of a blank page.
 
 ## Tests
 
-`npm test` runs Vitest in Node. It does not call Nominatim, Overpass, OSRM, Open-Meteo, Firebase, or xAI. Covered: multi-day plans, one-stop revisions, autonomy proposals, opening hours, the Seattle fallback, retry and timeout behavior, intent questions, and the agent runtime (validation, declined writes, peer consent, private context, budgets, and cycles).
+`npm test` runs Vitest in Node. It does not call Nominatim, Overpass, OSRM, Open-Meteo, Firebase, or xAI. Covered: multi-day plans, one-stop revisions, autonomy proposals, opening hours, the Seattle fallback, the saved-trip morning check, the extra-AI flag staying off, retry and timeout behavior, intent questions, and the agent runtime (validation, declined writes, peer consent, private context, budgets, and cycles).

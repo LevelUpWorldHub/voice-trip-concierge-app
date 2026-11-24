@@ -15,16 +15,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { validatePulseCity } from "@/lib/api-input";
+import { extraAiEnabled } from "@/lib/feature-flags";
 import { inspectItinerary } from "@/lib/autonomy";
 import { estimateDrive } from "@/lib/geo";
+import { scrollElementToLatest } from "@/lib/chat-scroll";
+import { sampleHealLog } from "@/lib/heal-log";
 import { firebaseConfigured, interpretWithHybrid, kickDeviceModel, narrateWithHybrid, type HybridTrace } from "@/lib/hybrid-ai";
 import { interpretText, type Slot } from "@/lib/intent";
 import { narrateApplied, narrateItinerary } from "@/lib/narration";
+import { hoursLabel, isOpen } from "@/lib/opening-hours";
 import { assembleTrip, type AssembledTrip } from "@/lib/plan-client";
 import type { RouteFn } from "@/lib/planner";
 import { replaceStop, reviseByText } from "@/lib/revisions";
+import { morningChanges, parseSavedTrip, SAVED_TRIP_KEY, serializeSavedTrip, snapshotChecks, type MorningChange, type SavedTrip } from "@/lib/saved-trip";
 import { buildSeattleSample, seattleRoute, SEATTLE_PLACES } from "@/lib/seattle";
 import { createRecognizer, speak, speechRecognitionSupported } from "@/lib/speech";
+import { localIsoDate } from "@/lib/time";
 import type { Itinerary, Place, Proposal, ServiceHealth, TripRequest } from "@/lib/types";
 
 type Message = { id: string; role: "traveler" | "concierge"; text: string };
@@ -76,7 +83,10 @@ export function ConciergeApp() {
     "Waiting for the first plan. A failed map call will switch to the labeled Seattle sample instead of blanking the page.",
   ]);
   const [listenHint, setListenHint] = useState(false);
+  const [savedTrip, setSavedTrip] = useState<SavedTrip | null>(null);
+  const [morning, setMorning] = useState<{ note: string; changes: MorningChange[] } | null>(null);
   const recognizer = useRef<ReturnType<typeof createRecognizer>>(null);
+  const chatLogRef = useRef<HTMLDivElement>(null);
   const itineraryRef = useRef(itinerary);
   const catalogRef = useRef(catalog);
   const proposalsRef = useRef(proposals);
@@ -85,9 +95,23 @@ export function ConciergeApp() {
   proposalsRef.current = proposals;
 
   useEffect(() => {
+    const root = chatLogRef.current;
+    if (!root) return;
+    const viewport = root.querySelector<HTMLElement>("[data-slot='scroll-area-viewport']");
+    scrollElementToLatest(viewport);
+  }, [messages]);
+
+  useEffect(() => {
     queueMicrotask(() => {
       setListenHint(!speechRecognitionSupported());
       if (new URLSearchParams(window.location.search).get("demo") === "1") setVoiceOn(false);
+      const stored = parseSavedTrip(window.localStorage.getItem(SAVED_TRIP_KEY));
+      if (!stored) return;
+      setSavedTrip(stored);
+      setItinerary(stored.itinerary);
+      setCatalog(stored.catalog);
+      setProposals(inspectItinerary(stored.itinerary, stored.catalog, routeFor(stored.itinerary)));
+      void refreshMorning(stored);
     });
   }, []);
 
@@ -134,14 +158,73 @@ export function ConciergeApp() {
 
   function loadSample() {
     const sample = buildSeattleSample({ destination: "Seattle", days: 3, interests: ["food", "parks", "museums"], pace: "balanced" });
-    setHealLog([
-      "No key required. The labeled Seattle sample replaced a live map call.",
-      "Autonomy watch checked Monday hours, Tuesday rain, and a 46 minute drive locally.",
-      "Firebase AI Logic stays on the deterministic parser until the web config is set. Grok stays off until XAI_API_KEY is set.",
-    ]);
+    setHealLog(sampleHealLog(firebaseConfigured()));
     const next = applyAssembled({ itinerary: sample, catalog: SEATTLE_PLACES, services: [] });
+    const trip: SavedTrip = {
+      version: 1,
+      itinerary: sample,
+      catalog: SEATTLE_PLACES,
+      savedAt: new Date().toISOString(),
+      checks: snapshotChecks(sample),
+    };
+    window.localStorage.setItem(SAVED_TRIP_KEY, serializeSavedTrip(trip));
+    setSavedTrip(trip);
+    const check = morningChanges(trip, localIsoDate(), routeFor(sample));
+    setMorning({ note: check.note, changes: check.changes });
     const lead = next[0]?.detail;
     say(lead ? `${narrateItinerary(sample)} ${lead}` : narrateItinerary(sample));
+  }
+
+  async function refreshMorning(stored: SavedTrip) {
+    const today = localIsoDate();
+    let current = stored.itinerary;
+    let refreshNote = "";
+    if (stored.itinerary.days.some((day) => day.date === today)) {
+      try {
+        const response = await fetch(
+          `/api/weather?lat=${stored.itinerary.center.lat}&lon=${stored.itinerary.center.lon}`,
+        );
+        const body = (await response.json()) as { ok?: boolean; days?: { summary: string; tempC: number; precipProb: number; code: number }[] };
+        if (body.ok && Array.isArray(body.days)) {
+          current = {
+            ...stored.itinerary,
+            days: stored.itinerary.days.map((day, index) => ({
+              ...day,
+              weather: body.days?.[index] ?? day.weather,
+            })),
+          };
+        } else {
+          refreshNote = " The live forecast could not be refreshed.";
+        }
+      } catch {
+        refreshNote = " The live forecast could not be refreshed.";
+      }
+    }
+    const check = morningChanges(stored, today, routeFor(stored.itinerary), current);
+    setMorning({ note: `${check.note}${refreshNote}`, changes: check.changes });
+  }
+
+  function saveOnDevice() {
+    const current = itineraryRef.current;
+    if (!current) return;
+    const trip: SavedTrip = {
+      version: 1,
+      itinerary: current,
+      catalog: catalogRef.current,
+      savedAt: new Date().toISOString(),
+      checks: snapshotChecks(current),
+    };
+    window.localStorage.setItem(SAVED_TRIP_KEY, serializeSavedTrip(trip));
+    setSavedTrip(trip);
+    const check = morningChanges(trip, localIsoDate(), routeFor(current));
+    setMorning({ note: check.note, changes: check.changes });
+    say(check.note);
+  }
+
+  function forgetSavedTrip() {
+    window.localStorage.removeItem(SAVED_TRIP_KEY);
+    setSavedTrip(null);
+    setMorning(null);
   }
 
   async function handleText(text: string) {
@@ -209,6 +292,19 @@ export function ConciergeApp() {
     const nextProposals = inspectItinerary(next, catalogRef.current, routeFor(next)).filter((item) => item.id !== proposal.id);
     setItinerary(next);
     setProposals(nextProposals);
+    if (savedTrip) {
+      const trip: SavedTrip = {
+        ...savedTrip,
+        itinerary: next,
+        catalog: catalogRef.current,
+        savedAt: new Date().toISOString(),
+        checks: snapshotChecks(next),
+      };
+      window.localStorage.setItem(SAVED_TRIP_KEY, serializeSavedTrip(trip));
+      setSavedTrip(trip);
+      const check = morningChanges(trip, localIsoDate(), routeFor(next));
+      setMorning({ note: check.note, changes: check.changes });
+    }
     const spoken = narrateApplied(previous?.name || "That stop", proposal.replacement.name);
     say(spoken);
     toast.success(spoken);
@@ -243,12 +339,21 @@ export function ConciergeApp() {
   }
 
   async function loadPulse() {
-    if (!itinerary) return;
+    if (!extraAiEnabled() || !itinerary) return;
+    if (itinerary.sampleStandsIn === false) {
+      setPulse({ notes: [], reason: `City notes stay off. This is not a plan for ${itinerary.askedFor}.` });
+      return;
+    }
+    const city = validatePulseCity({ city: itinerary.destination });
+    if (!city.ok) {
+      setPulse({ notes: [], reason: city.error });
+      return;
+    }
     try {
       const response = await fetch("/api/city-pulse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city: itinerary.destination }),
+        body: JSON.stringify({ city: city.value }),
       });
       const body = await response.json();
       setPulse({ notes: body.notes || [], reason: body.reason || "" });
@@ -288,18 +393,26 @@ export function ConciergeApp() {
       </header>
       <div className="grid flex-1 gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <section className="flex min-h-0 flex-col gap-3">
-          <ScrollArea className="h-72 rounded-xl border lg:h-[calc(100svh-16rem)]">
-            <div className="flex flex-col gap-3 p-3" aria-live="polite">
-              {messages.map((message) => (
-                <Card key={message.id} size="sm" className={message.role === "traveler" ? "bg-secondary" : ""}>
-                  <CardHeader>
-                    <CardDescription>{message.role === "traveler" ? "You" : "Concierge"}</CardDescription>
-                    <CardTitle className="text-sm font-normal">{message.text}</CardTitle>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
+          <div ref={chatLogRef} data-testid="chat-log" className="h-72 min-h-0 lg:h-[calc(100svh-16rem)]">
+            <ScrollArea className="h-full rounded-xl border">
+              <div className="flex flex-col gap-3 p-3" aria-live="polite">
+                {messages.map((message, index) => (
+                  <Card
+                    key={message.id}
+                    size="sm"
+                    className={message.role === "traveler" ? "bg-secondary" : ""}
+                    data-testid={index === messages.length - 1 ? "chat-latest" : "chat-message"}
+                  >
+                    <CardHeader>
+                      <CardDescription>{message.role === "traveler" ? "You" : "Concierge"}</CardDescription>
+                      <CardTitle className="text-sm font-normal">{message.text}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                ))}
+                <div data-testid="chat-end" aria-hidden="true" />
+              </div>
+            </ScrollArea>
+          </div>
           <form
             className="flex flex-col gap-2"
             onSubmit={(event) => {
@@ -375,11 +488,30 @@ export function ConciergeApp() {
             {itinerary ? (
               <>
                 {itinerary.sampleLabel ? (
-                  <Alert>
-                    <AlertTitle>{itinerary.sampleLabel}</AlertTitle>
+                  <Alert data-testid="sample-alert">
+                    <AlertTitle>{itinerary.sampleStandsIn === false ? `Not a plan for ${itinerary.askedFor}` : itinerary.sampleLabel}</AlertTitle>
                     <AlertDescription>{itinerary.warnings[0]}</AlertDescription>
                   </Alert>
                 ) : null}
+                {morning ? (
+                  <Alert data-testid="morning-check">
+                    <AlertTitle>{morning.changes.length ? "Morning check" : "Saved trip"}</AlertTitle>
+                    <AlertDescription>{morning.note}</AlertDescription>
+                  </Alert>
+                ) : null}
+                {morning?.changes.map((change) => (
+                  <Card key={change.stopId} data-testid="morning-change">
+                    <CardHeader>
+                      <CardTitle>{change.stopName}</CardTitle>
+                      <CardDescription>{change.detail}</CardDescription>
+                    </CardHeader>
+                    {change.proposal ? (
+                      <CardFooter>
+                        <Button data-testid="morning-approve" onClick={() => approve(change.proposal as Proposal)}>Approve swap</Button>
+                      </CardFooter>
+                    ) : null}
+                  </Card>
+                ))}
                 {itinerary.warnings.filter((_, index) => !(itinerary.sampleLabel && index === 0)).map((warning) => (
                   <Alert key={warning}>
                     <AlertTitle>Heads up</AlertTitle>
@@ -393,6 +525,14 @@ export function ConciergeApp() {
                         {item.title}
                       </Button>
                     ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" data-testid="save-trip" onClick={saveOnDevice}>
+                      {savedTrip ? "Update saved trip" : "Save on this device"}
+                    </Button>
+                    {savedTrip ? (
+                      <Button type="button" variant="ghost" size="sm" onClick={forgetSavedTrip}>Delete saved trip</Button>
+                    ) : null}
                   </div>
                 </div>
                 {proposals[0] ? (
@@ -408,6 +548,7 @@ export function ConciergeApp() {
                     </CardFooter>
                   </Card>
                 ) : null}
+                {extraAiEnabled() ? (
                 <Card data-testid="city-pulse-card" size="sm">
                   <CardHeader>
                     <CardTitle>Grok city pulse</CardTitle>
@@ -429,6 +570,7 @@ export function ConciergeApp() {
                     <Button data-testid="city-pulse" variant="outline" size="sm" onClick={() => void loadPulse()}>Ask Grok</Button>
                   </CardFooter>
                 </Card>
+                ) : null}
                 {day ? (
                   <ol className="flex flex-col gap-3">
                     {day.stops.map((stop, index) => (
@@ -443,6 +585,7 @@ export function ConciergeApp() {
                           </CardHeader>
                           <CardContent className="text-sm text-muted-foreground">
                             {stop.interest} · {stop.indoor ? "indoor" : "outdoor"}
+                            {` · ${hoursLabel(isOpen(stop.openingHours, day.date, stop.arrival))}`}
                             {stop.openingHours ? ` · ${stop.openingHours}` : ""}
                             {stop.address ? ` · ${stop.address}` : ""}
                           </CardContent>
@@ -514,8 +657,8 @@ export function ConciergeApp() {
                 <CardDescription>{trace.detail}</CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
-                  {healLog.map((line, index) => <li key={`${index}-${line}`}>{line}</li>)}
+                <ul className="flex flex-col gap-2 text-sm text-muted-foreground" data-testid="heal-log">
+                  {healLog.map((line, index) => <li key={`${index}-${line}`} data-testid="heal-log-line">{line}</li>)}
                 </ul>
               </CardContent>
             </Card>

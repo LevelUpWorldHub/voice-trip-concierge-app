@@ -1,7 +1,5 @@
 # Voice Trip Concierge
 
-**Live demo:** [https://mallbot-trip.vercel.app](https://mallbot-trip.vercel.app)
-
 Voice Trip Concierge is an autonomous trip planner for the browser. You speak or type. It asks only for the city, the number of days, or the interests it still does not have, then builds a multi-stop itinerary from OpenStreetMap and driving times. If a stop is closed, rained on, or a long drive away, it proposes one swap and waits for a tap.
 
 Built by Mark Yukhimets, Level Up Inc, for Firebase #BuildHybridAI 2026 and the Cognizant Open Agentic Web Challenge.
@@ -26,18 +24,16 @@ npm run build
 - Places come from Nominatim and Overpass. Drive times come from OSRM. Weather comes from Open-Meteo.
 - A revision such as “swap the art museum for a market” changes that stop and leaves the rest.
 - The watch tab checks opening hours, precipitation, and legs longer than 40 minutes.
-- **Load Seattle sample** is a labeled snapshot for demos and for when a live service times out.
-- **City pulse** calls Grok only when `XAI_API_KEY` is set. It never plans the trip.
-- **Agents** runs the published agent network in the browser. Bring-your-own-key settings stay in `localStorage`.
+- **Load Seattle sample** is a labeled snapshot for demos and for when live service data is missing. Day one is today, so the morning check can appear. If you asked for another city, the sample does not pretend to be that city.
+- Grok and bring-your-own-key are off unless `NEXT_PUBLIC_ENABLE_EXTRA_AI=true`. The hackathon build does not call them.
+- **Agents** runs the published agent network in the browser on the deterministic router.
 
 ## Environment
 
-Copy `.env.example` to `.env.local` for local work, or set the same names in Vercel. Leave them blank for the no-key demo. Do not commit real keys. Firebase setup is in `docs/FIREBASE_SETUP.md`.
+Copy `.env.example` to `.env.local` for local work, or set the same names in Vercel. Leave them blank for the no-key demo. Do not commit real keys. Firebase setup is in `docs/FIREBASE_SETUP.md`. On-device Chrome uses the **Gemma 4 for Built-in AI** flag in `chrome://flags`.
 
 Vercel env vars:
 
-- `XAI_API_KEY`
-- `XAI_MODEL`
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
@@ -47,6 +43,9 @@ Vercel env vars:
 - `NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY`
 - `NEXT_PUBLIC_FIREBASE_CLOUD_MODEL`
 - `NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN` (local debug only; leave unset on Vercel)
+- `NEXT_PUBLIC_ENABLE_EXTRA_AI` (leave unset for the hackathon build)
+- `XAI_API_KEY` (unused unless the extra-AI flag is true)
+- `XAI_MODEL` (unused unless the extra-AI flag is true)
 
 `vercel.json` marks the project as Next.js and publishes CORS on the agent-network JSON files. `npm run build` is the production build.
 

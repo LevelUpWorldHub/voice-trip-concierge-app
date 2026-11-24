@@ -17,10 +17,10 @@ Deadline: Monday 30 November 2026, 2:00 PM PT. Target the form for 25–27 Novem
 | Requirement | Where it is met |
 | --- | --- |
 | Gen AI app using Firebase AI Logic at runtime | `lib/hybrid-ai.ts` imports `firebase/ai` and calls `getAI`, `GoogleAIBackend`, `getGenerativeModel` with `InferenceMode.PREFER_ON_DEVICE`, `initializeDeviceModel`, and `generateContent`. The badge reads `inferenceSource` (`on_device` or `in_cloud`) and latency. |
-| Web (Chrome), Gemini Nano via Firebase AI Logic | Desktop Chrome 139+ with the Prompt API flag. Cloud model falls back through the same SDK. See `docs/FIREBASE_SETUP.md`. |
+| Web (Chrome), Gemini Nano via Firebase AI Logic | Desktop Chrome 139+. In `chrome://flags`, enable **Gemma 4 for Built-in AI**. Cloud model falls back through the same SDK. See `docs/FIREBASE_SETUP.md`. |
 | App Check required; debug tokens allowed; secrets not committed | `ReCaptchaEnterpriseProvider` when `NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY` is set. Debug token env is documented and left empty in git. |
 | Open-source license visible at the repo root | `LICENSE` (Apache-2.0, the preferred license). |
-| Public GitHub or GitLab repo with source, assets, and run instructions | Public repo: https://github.com/LevelUpWorldHub/voice-trip-concierge-app. It includes the app source, canonical Apache-2.0 `LICENSE` (copyright in `NOTICE`), `docs/PRODUCT_ANALYSIS.md`, and `README.md` run instructions. Add `demo/voice-trip-concierge.mp4` and `app/favicon.ico` from this tree if they are not already on `main`. |
+| Public GitHub or GitLab repo with source, assets, and run instructions | Public repo: https://github.com/LevelUpWorldHub/voice-trip-concierge-app. `LICENSE` and `NOTICE` are in the repo. The demo video file is not. Devpost does not accept an Origin-only URL. |
 | Text description: Firebase use, features, value | Paste the description below. |
 | Demo video, at most 3 minutes, English, shows the product working, public on YouTube | `demo/voice-trip-concierge.mp4` is captions-only and under 3 minutes. Upload it to YouTube (public) and paste the link. Voice-over script: `docs/NARRATION.md`. |
 | Testing access, free, no secrets in the instructions | No account. No API key. Open the Vercel URL or `npm run dev`, then **Load Seattle sample**. Do not paste Firebase or xAI keys into the Devpost form. |
@@ -39,20 +39,18 @@ Voice Trip Concierge is a Web/Chrome trip planner for someone who would rather h
 
 The stops themselves come from OpenStreetMap, OSRM, and Open-Meteo. An autonomy watch compares opening hours, rain, and drive length, then proposes one swap. Nothing changes until you tap approve. The other stops stay.
 
-If Firebase is not configured, a deterministic parser and spoken template keep the same flow. If a map service times out, the screen shows a labeled Seattle sample instead of failing. Optional Grok city notes (xAI, `XAI_API_KEY`) add short cited local color and never plan or narrate the trip.
+If Firebase is not configured, a deterministic parser and spoken template keep the same flow. If a map service times out, the screen shows a labeled Seattle sample instead of inventing the requested city. For this hackathon build, Grok and the bring-your-own-key router are off unless `NEXT_PUBLIC_ENABLE_EXTRA_AI=true`. Off means those code paths are not called and the UI does not offer them. All inference that does run goes through Firebase AI Logic.
 
 ### Still yours before you submit
 
-The public GitHub repo is https://github.com/LevelUpWorldHub/voice-trip-concierge-app. Devpost can use that URL. It includes the canonical Apache-2.0 `LICENSE` (copyright in `NOTICE`) and `docs/PRODUCT_ANALYSIS.md`. Confirm the GitHub About panel shows Apache-2.0.
-
-`demo/voice-trip-concierge.mp4` and `app/favicon.ico` may still need a binary push from a machine signed into GitHub as LevelUpWorldHub (this environment can update text files on that repo, but not git-push binaries as that account):
+A public GitHub repo already exists: https://github.com/LevelUpWorldHub/voice-trip-concierge-app. Devpost can use that URL. `LICENSE` and `NOTICE` are in that repo. `demo/voice-trip-concierge.mp4` is not. From a machine signed into GitHub as LevelUpWorldHub:
 
 ```bash
 git remote add github https://github.com/LevelUpWorldHub/voice-trip-concierge-app.git
-git add demo/voice-trip-concierge.mp4 app/favicon.ico
-git commit -m "Add demo video and favicon"
 git push github main
 ```
+
+After that push, confirm the GitHub About panel shows Apache-2.0. `LICENSE` is now the unmodified Apache text so GitHub can detect it. Copyright is in `NOTICE`.
 
 Then:
 
@@ -65,8 +63,6 @@ Then:
 
 Set these in the Vercel project. Leave secrets empty if you only need the no-key demo.
 
-- `XAI_API_KEY`
-- `XAI_MODEL` (`grok-4.7` if you want the default)
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
@@ -76,12 +72,14 @@ Set these in the Vercel project. Leave secrets empty if you only need the no-key
 - `NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY`
 - `NEXT_PUBLIC_FIREBASE_CLOUD_MODEL` (`gemini-3.5-flash-lite` unless you choose another current Gemini id)
 - `NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN` — leave unset in production
+- `NEXT_PUBLIC_ENABLE_EXTRA_AI` — leave unset. Set to `true` only outside this hackathon build. While unset, Grok and the OpenAI-compatible router are not called.
+- `XAI_API_KEY` and `XAI_MODEL` — unused unless `NEXT_PUBLIC_ENABLE_EXTRA_AI=true`
 
 ## Cognizant Open Agentic Web Challenge
 
 Contest: https://cognizant-agenticweb.devpost.com/  
 Spec: https://github.com/cognizant-ai-labs/agentic-web/blob/main/docs/worldwide_agentic_web_mvp_spec.md
 
-Published with CORS: `/agent-manifest.json`, `/voice_trip_concierge.network.json`, `/city_notes.network.json`, `/links.json`, `/runtime/index.js`. The Agents tab runs that network in the browser. The default router is deterministic so the host pays nothing. A visitor may save their own OpenAI-compatible key in this browser. That key is not the Firebase inference path and is not required for #BuildHybridAI.
+Published with CORS: `/agent-manifest.json`, `/voice_trip_concierge.network.json`, `/city_notes.network.json`, `/links.json`, `/runtime/index.js`. The Agents tab runs that network in the browser on the deterministic router. For the #BuildHybridAI build, the bring-your-own-key form is hidden and `createOpenAICompatibleLlm` is not called. Set `NEXT_PUBLIC_ENABLE_EXTRA_AI=true` only if you intentionally leave the hackathon inference rule.
 
-Intent and narration in the main screen go through Firebase AI Logic when configured. The FAQ for #BuildHybridAI asks that model inference go through Firebase AI Logic. Grok is limited to optional cited notes. The agent-network router is the Cognizant bring-your-own-key path, off unless the visitor turns it on.
+Intent and narration in the main screen go through Firebase AI Logic when configured, and through the deterministic parser when that config is absent.

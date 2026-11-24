@@ -79,3 +79,18 @@ export function isOpen(
   if (applicable.some((rule) => rule.off || rule.ranges.length > 0)) return "closed";
   return "unknown";
 }
+
+const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
+
+/** Open 10:00–17:00 every day except `closedWeekday` (0 = Sunday). */
+export function hoursOpenExcept(closedWeekday: number): string {
+  const closed = DAY_NAMES[closedWeekday];
+  const open = DAY_NAMES.filter((_, index) => index !== closedWeekday).join(",");
+  return `${open} 10:00-17:00; ${closed} off`;
+}
+
+export function hoursLabel(state: OpenState): string {
+  if (state === "open") return "Open at arrival";
+  if (state === "closed") return "Closed at arrival";
+  return "Hours unknown";
+}
