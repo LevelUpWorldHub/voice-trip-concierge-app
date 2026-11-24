@@ -8,7 +8,7 @@ Show the header: Voice Trip Concierge, Level Up Inc, Mark Yukhimets. Point at th
 
 ## 0:12–0:28 Sample with problems already in it
 
-Click **Load Seattle sample**. The timeline shows Pike Place Market, the Seattle Art Museum, and Kerry Park. Say: “This is a labeled sample, used when live maps time out and also as a demo fixture. Monday the 16th, the art museum is closed.”
+Click **Load Seattle sample**. The timeline shows Pike Place Market, the Seattle Art Museum, and Kerry Park. Say: “This is a labeled sample. Day one is today, so the morning check runs, and the art museum is closed that day.” Point at the morning-check banner.
 
 ## 0:28–0:48 One tap
 
@@ -20,14 +20,14 @@ Type: `swap Kerry Park for a market`. Press Enter. Kerry Park becomes Melrose Ma
 
 ## 1:05–1:22 Watch and status
 
-Open **Watch**. Rain on day 2 and the long drive to Golden Gardens Park are listed if they were not already approved. Open **Status**. Nominatim, Overpass, OSRM, Open-Meteo, Firebase, and Grok each have a state. Say that a failed probe does not blank the page.
+Open **Watch**. Rain on day 2 and the long drive to Golden Gardens Park are listed if they were not already approved. Open **Status**. Nominatim, Overpass, OSRM, Open-Meteo, and Firebase each have a state. Grok is not listed in this hackathon build. Say that a failed probe does not blank the page.
 
 ## 1:22–1:40 Agent network
 
-Open **Agents**. Show the manifest link. Click **Run network** and approve the write dialog. The same itinerary updates. If you have time, click a prompt that asks for local notes and **Allow this session** so `city_notes` loads. Point at the bring-your-own-key card and say the host does not pay for that router.
+Open **Agents**. Show the manifest link. Click **Run network** and approve the write dialog. The same itinerary updates. The bring-your-own-key card is hidden unless `NEXT_PUBLIC_ENABLE_EXTRA_AI=true`.
 
 ## 1:40–1:50 Close
 
-Say the line: “Firebase AI Logic is the hybrid path for understanding and narration. The map, the hours, and the one-tap swap work even with no keys. Grok is only an optional city note.”
+Say the line: “Firebase AI Logic is the only inference path in this hackathon build. The map, the hours, and the one-tap swap work even with no keys.”
 
 Stop the recording before two minutes.

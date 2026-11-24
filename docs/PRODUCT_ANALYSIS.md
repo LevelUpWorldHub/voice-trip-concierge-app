@@ -31,7 +31,7 @@ Help one traveler keep a city day honest: build the stops from map data, say whe
 2. **The hours spent turning "food and parks" into a day.** Priceline's 16 hours and Go City's 17 hours 42 minutes include booking and price comparison, which this app does not do. The slice it can touch is assembling the experiences. Go City says that research is the most time-consuming planning task. Priceline says 22% already find the itinerary itself frustrating.
 3. **The day changes after the plan is written.** Rain, a closed indoor backup, or a drive that eats the afternoon. Huvver's Louvre example is the shape of the bug: an indoor swap can still land on a closed day.
 4. **Fixing one mistake rebuilds the whole trip.** HuffPost's account is a schedule that does not survive a single correction. Group travelers then hear "why didn't we do this instead?" (Klook).
-5. **The planner stays on duty during the trip.** Klook says more than half of planners check their phone six or more times a day for logistics. This app does not yet watch a saved trip on the morning of the visit.
+5. **The planner stays on duty during the trip.** Klook says more than half of planners check their phone six or more times a day for logistics. The live app can save the trip on this device and, on a day that is in the trip, run a morning check for hours, rain, and long drives. A swap still waits for a tap.
 
 Overspending is the top pain in the Go City survey (44%). This product does not touch price, lodging, or tickets. Treating it as a money-saving tool would be a false promise.
 
@@ -45,21 +45,21 @@ Overspending is the top pain in the Go City survey (44%). This product does not 
 - a weather failure keeps the places and pauses rain checks
 - an OSRM failure keeps the places and labels legs as estimates
 
-`app/api/city-pulse` calls xAI only when `XAI_API_KEY` is set, asks for short notes, and returns citations it can find. It does not plan. `app/api/health` probes the same services.
+`app/api/city-pulse` calls xAI only when `NEXT_PUBLIC_ENABLE_EXTRA_AI` is exactly `true` and `XAI_API_KEY` is set. It asks for short notes and returns citations it can find. It does not plan. The live site leaves that flag unset, so the route does not call xAI. Planning runs on Firebase AI Logic (Gemini, on device or in the cloud) or the deterministic parser. `app/api/health` probes the map services and omits Grok unless the same flag is on.
 
-Shortfalls: driving only; the first 24 named nodes, not a judgment of what is worth seeing; `opening_hours` only when the tag exists; no prices, tickets, reservations, holidays, or "last boat home"; the Seattle sample can stand in for Lisbon and only warns in copy.
+Shortfalls: driving only; the first 24 named nodes, not a judgment of what is worth seeing; `opening_hours` only when the tag exists; no prices, tickets, reservations, holidays, or "last boat home". If live map data is missing, the screen uses the labeled Seattle sample and says it is not a plan for a different city the traveler asked for.
 
 ### Planner, watch, and speech (inner components)
 
 `lib/intent.ts` asks for the first missing piece only: city, days, or an interest from a fixed list. Pace is relaxed, balanced, or packed. `lib/planner.ts` clusters by longitude, mixes interests, orders by nearest neighbor, and schedules from 10:00 with fixed dwell times. `lib/revisions.ts` replaces one stop and reschedules that day. `lib/autonomy.ts` proposes a swap when a stop is closed, outdoor with at least a 55% chance of precipitation, or a drive over 40 minutes, and only from places already gathered within 8 km. `lib/opening-hours.ts` reads `24/7`, day ranges, and simple hour ranges. Anything else, including `sunrise-sunset`, is `unknown`, and unknown is treated as acceptable. Indoor versus outdoor is the interest category, not an OSM indoor tag. `lib/hybrid-ai.ts` uses Firebase AI Logic in `PREFER_ON_DEVICE` mode for one-turn intent JSON and a short narration. On failure, or with no Firebase web config, `lib/intent.ts` and `lib/narration.ts` take over. `lib/speech.ts` listens and speaks in `en-US` only. `lib/resilience.ts` is the timeout and retry helper. Tests cover these paths without calling the network.
 
-Shortfalls: no memory of the traveler; no check the morning of the visit; hours syntax is a subset of OSM; a closed place with no nearby substitute produces no proposal; the model never sees tools, so it cannot be the thing that verifies hours.
+Shortfalls: no memory of who is traveling; hours syntax is a subset of OSM; a closed place with no nearby substitute produces no proposal; the model never sees tools, so it cannot be the thing that verifies hours. A saved trip and the morning check are in the live app (`lib/saved-trip.ts`). Unknown hours are named on the card and can propose a swap.
 
 ### Frontend
 
-`components/concierge-app.tsx` is the product: conversation, one-tap approval, timeline, map tab, watch tab, status tab, and the Grok card. `components/trip-map.tsx` and `map-canvas.tsx` draw the day. `components/error-boundary.tsx` catches a render crash. `components/agent-panel.tsx` runs the public agent network, asks before a peer fetch, and confirms writes. A bring-your-own-key profile can sit in `localStorage`.
+`components/concierge-app.tsx` is the product: conversation, one-tap approval, timeline, map tab, watch tab, status tab, save on this device, and the morning check. The Grok city-pulse card and the bring-your-own-key form render only when `NEXT_PUBLIC_ENABLE_EXTRA_AI` is `true`. The live site leaves that flag unset. `components/trip-map.tsx` and `map-canvas.tsx` draw the day on OpenStreetMap tiles. `components/error-boundary.tsx` catches a render crash. `components/agent-panel.tsx` runs the public agent network on the deterministic router, asks before a peer fetch, and confirms writes.
 
-The screen tells the truth about the sample and about Grok being off. It does not save a trip, name the people in the party, or distinguish "I am researching" from "I am leaving now."
+The screen tells the truth about the sample and about Grok being off. It can save the trip in this browser. It does not name the people in the party, or distinguish "I am researching" from "I am leaving now."
 
 ## 5. The message
 
@@ -67,7 +67,7 @@ The screen tells the truth about the sample and about Grok being off. It does no
 
 **To judges.** Hybrid inference is for understanding and speaking, not for inventing the map. On-device when Chrome has Gemini Nano, cloud Gemini otherwise, and a deterministic parser when Firebase is absent. That last path is what the current demo video shows, because no Firebase project is configured in this repo.
 
-**To the public.** Autonomy here means a narrow watch with a person at the switch. It is not a claim that an assistant should book, spend, or wander the web on someone's behalf. Grok is optional color, not the planner. The agent network is a way for another site to call the same rules, not a second product personality.
+**To the public.** Autonomy here means a narrow watch with a person at the switch. It is not a claim that an assistant should book, spend, or wander the web on someone's behalf. Planning is Firebase AI Logic or the deterministic parser. Grok city notes stay off unless `NEXT_PUBLIC_ENABLE_EXTRA_AI=true`, and they never plan the trip. The agent network is a way for another site to call the same rules, not a second product personality.
 
 ## 6. Consequences
 
@@ -96,7 +96,7 @@ Against the #BuildHybridAI criteria:
 
 ## 8. Candidates, only if they serve the assistant
 
-**A. Morning re-check of a trip saved on this device.** The watch runs again against hours and the forecast, and still waits for a tap. Pros: this is the live assistant the current one-shot screen only sketches, and it matches Klook's "still on the phone during the trip" finding. Cons: needs local storage, a clear delete button, and care not to nag. **This is the one to build if anything is built.**
+**A. Morning re-check of a trip saved on this device.** This is in the live app. The watch runs again against hours and the forecast, and still waits for a tap. The trip is stored in this browser, with a delete control, and the tests keep that store apart from any model key.
 
 **B. No-car mode.** Walking or transit time, and a warning when the only route is a drive. Pros: the drive-only plan is the biggest safety and bias gap. Cons: coverage is uneven, and the UI must not pretend a bad transit result is a promise.
 
@@ -108,10 +108,10 @@ Not recommended: booking, payments, a louder Grok, or more agent theater. Those 
 
 Order, after approval. Sizes are scope, not a calendar.
 
-1. **Unknown hours on the card.** `lib/opening-hours.ts`, `lib/autonomy.ts`, the stop card in `components/concierge-app.tsx`, and a Vitest case. Small.
-2. **Seattle sample never pretends to be the requested city.** Stronger gate in `lib/plan-client.ts` and the alert copy. Small.
-3. **Save this trip in the browser and re-run the watch.** New local store, a morning check, delete control, tests that the key and the trip stay apart. Medium. This is the product step.
-4. **No-car routing.** `app/api/drive` profile choice, planner, map. Medium. Do it after 3, or skip it if the audience is drivers only. That choice should be explicit.
-5. **Do not expand Grok, accounts, or the agent tab** until 1–3 are in front of a traveler who is not a judge.
+1. **Unknown hours on the card.** In the live app: `lib/opening-hours.ts`, `lib/autonomy.ts`, the stop card, and a Vitest case.
+2. **Seattle sample never pretends to be the requested city.** In the live app. The sample says the stops are in Seattle when the traveler asked for somewhere else.
+3. **Save this trip in the browser and re-run the watch.** In the live app: `lib/saved-trip.ts`, the morning check, a delete control, and tests that the stored trip stays apart from model keys.
+4. **No-car routing.** Not in the live app. `app/api/drive` is still a driving profile. Do this only if the audience is not drivers. That choice should be explicit.
+5. **Do not expand Grok, accounts, or the agent tab.** The live hackathon build leaves `NEXT_PUBLIC_ENABLE_EXTRA_AI` unset. Planning stays on Firebase AI Logic.
 
-Tests stay in Vitest with no network, plus one Playwright path for "save, reopen, see the same warning." A new demo video waits until the morning check exists. Otherwise the video sells a one-shot demo as a live assistant.
+Tests stay in Vitest with no network. The morning check is in the app. A demo video of that check is not in this repo.

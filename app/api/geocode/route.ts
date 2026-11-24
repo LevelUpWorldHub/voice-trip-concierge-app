@@ -1,12 +1,12 @@
 import { connection } from "next/server";
+import { validateCityQuery } from "@/lib/api-input";
 import { errorMessage, fetchJson, rethrowIfNeeded } from "@/lib/server/upstream";
 
 export async function GET(request: Request) {
   await connection();
-  const query = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-  if (!query || query.length > 120) {
-    return Response.json({ ok: false, error: "Enter a city name." });
-  }
+  const parsed = validateCityQuery(new URL(request.url).searchParams.get("q"));
+  if (!parsed.ok) return Response.json(parsed);
+  const query = parsed.value;
   try {
     const url = new URL("https://nominatim.openstreetmap.org/search");
     url.searchParams.set("q", query);

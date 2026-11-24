@@ -8,6 +8,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { tripActions } from "@/public/runtime/trip-actions.js";
+import { extraAiEnabled, selectBrowserRouter } from "@/lib/feature-flags";
 import { createDeterministicLlm, createEngine, createOpenAICompatibleLlm } from "@/public/runtime/index.js";
 
 type Byok = { baseUrl: string; model: string; apiKey: string };
@@ -40,6 +41,7 @@ export function AgentPanel({
   const [routerLabel, setRouterLabel] = useState("Deterministic on-page router");
 
   useEffect(() => {
+    if (!extraAiEnabled()) return;
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return;
     queueMicrotask(() => {
@@ -77,9 +79,17 @@ export function AgentPanel({
       const links = await linksResponse.json();
       const stored = window.localStorage.getItem(STORAGE_KEY);
       const profile = stored ? (JSON.parse(stored) as Byok) : null;
-      const llm = profile?.apiKey
-        ? createOpenAICompatibleLlm({ baseUrl: profile.baseUrl, apiKey: profile.apiKey, model: profile.model })
-        : createDeterministicLlm();
+      const llm = await selectBrowserRouter({
+        enabled: extraAiEnabled(),
+        hasKey: Boolean(profile?.apiKey),
+        deterministic: () => createDeterministicLlm(),
+        compatible: () =>
+          createOpenAICompatibleLlm({
+            baseUrl: profile!.baseUrl,
+            apiKey: profile!.apiKey,
+            model: profile!.model,
+          }),
+      });
       const engine = createEngine({
         network,
         frontMan: "front_desk",
@@ -118,7 +128,7 @@ export function AgentPanel({
           <CardTitle>Browser agent network</CardTitle>
           <CardDescription>
             This panel runs <span className="font-medium text-foreground">/runtime/index.js</span> against the published
-            network. Router: {routerLabel}. A visitor key stays in this browser and is sent only to the router URL.
+            network. Router: {extraAiEnabled() ? routerLabel : "Deterministic on-page router"}. Inference for the trip stays on Firebase AI Logic.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -152,7 +162,8 @@ export function AgentPanel({
           </ScrollArea>
         </CardContent>
       </Card>
-      <Card>
+      {extraAiEnabled() ? (
+      <Card data-testid="byok-card">
         <CardHeader>
           <CardTitle>Bring your own model</CardTitle>
           <CardDescription>
@@ -180,6 +191,7 @@ export function AgentPanel({
           <Button variant="outline" onClick={clearByok}>Delete saved key</Button>
         </CardFooter>
       </Card>
+      ) : null}
       <Dialog open={Boolean(consent)} onOpenChange={(open) => { if (!open && consent) { consent.resolve(false); setConsent(null); } }}>
         <DialogContent>
           <DialogHeader>

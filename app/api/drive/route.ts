@@ -1,16 +1,14 @@
 import { connection } from "next/server";
+import { validateDrivePoints } from "@/lib/api-input";
 import { errorMessage, fetchJson, rethrowIfNeeded } from "@/lib/server/upstream";
-
-type Point = { lat: number; lon: number };
 
 export async function POST(request: Request) {
   await connection();
   try {
-    const body = (await request.json()) as { points?: Point[] };
-    const points = Array.isArray(body.points) ? body.points.slice(0, 8) : [];
-    if (points.length < 2 || points.some((point) => !Number.isFinite(point.lat) || !Number.isFinite(point.lon))) {
-      return Response.json({ ok: false, error: "Need two or more coordinates." });
-    }
+    const body = await request.json();
+    const parsed = validateDrivePoints(body);
+    if (!parsed.ok) return Response.json(parsed);
+    const points = parsed.value;
     const path = points.map((point) => `${point.lon},${point.lat}`).join(";");
     const result = await fetchJson(
       `https://router.project-osrm.org/route/v1/driving/${path}?overview=full&geometries=geojson`,

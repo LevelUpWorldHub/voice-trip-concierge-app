@@ -89,10 +89,14 @@ export type Itinerary = {
   days: DayPlan[];
   dataSource: "live" | "snapshot";
   sampleLabel?: string;
+  /** City the traveler asked for. Present on the Seattle sample. */
+  askedFor?: string;
+  /** True only when the sample is actually for the city they asked for. */
+  sampleStandsIn?: boolean;
   warnings: string[];
 };
 
-export type ProposalReason = "closed" | "weather" | "long-leg";
+export type ProposalReason = "closed" | "weather" | "long-leg" | "unknown-hours";
 
 export type Proposal = {
   id: string;

@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { extraAiEnabled, grokHealthRow } from "@/lib/feature-flags";
 import { errorMessage, fetchJson, rethrowIfNeeded } from "@/lib/server/upstream";
 import type { ServiceHealth } from "@/lib/types";
 
@@ -28,14 +29,9 @@ export async function GET() {
       probe("overpass", "Overpass", overpass),
       probe("osrm", "OSRM", osrm),
       probe("open-meteo", "Open-Meteo", meteo),
-      {
-        id: "grok",
-        label: "Grok city pulse",
-        status: process.env.XAI_API_KEY ? "idle" : "off",
-        detail: process.env.XAI_API_KEY
-          ? `Ready with ${process.env.XAI_MODEL || "grok-4.7"}. It is not used for planning.`
-          : "Off until XAI_API_KEY is set. Planning does not use it.",
-      },
+      ...[grokHealthRow(extraAiEnabled(), process.env.XAI_API_KEY, process.env.XAI_MODEL)].filter(
+        (row): row is NonNullable<typeof row> => row !== null,
+      ),
       {
         id: "firebase",
         label: "Firebase AI Logic",

@@ -1,6 +1,7 @@
 import { estimateDrive } from "@/lib/geo";
 import { scheduleDay, type RouteFn } from "@/lib/planner";
-import { addDays } from "@/lib/time";
+import { addDays, localIsoDate, weekdayIndex } from "@/lib/time";
+import { hoursOpenExcept } from "@/lib/opening-hours";
 import type { Itinerary, Place, RouteLeg, TripRequest, WeatherDay } from "@/lib/types";
 
 export const SEATTLE_SAMPLE_LABEL = "Seattle sample snapshot";
@@ -163,29 +164,35 @@ const SAMPLE_DAYS = [
   ["mopop", "chihuly", "golden-gardens"],
 ];
 
-export function seattleRequest(partial?: Partial<TripRequest>): TripRequest {
+export function seattleRequest(partial?: Partial<TripRequest>, start = localIsoDate()): TripRequest {
   return {
     destination: partial?.destination?.trim() || "Seattle",
     days: partial?.days || 3,
     interests: partial?.interests?.length ? partial.interests : ["food", "parks", "museums"],
     pace: partial?.pace ?? "balanced",
-    startDate: SEATTLE_SAMPLE_START,
+    startDate: start,
   };
 }
 
-export function buildSeattleSample(partial?: Partial<TripRequest>, reason?: string): Itinerary {
-  const request = seattleRequest(partial);
-  const askedForElsewhere = request.destination.toLowerCase() !== "seattle";
-  const warnings = [
-    reason
-      ? `${SEATTLE_SAMPLE_LABEL}. ${reason} The labeled Seattle sample is on screen so the trip can continue.`
-      : `${SEATTLE_SAMPLE_LABEL}. Hours, weather, and drive times in this itinerary are built-in sample data.`,
-  ];
-  if (askedForElsewhere) {
-    warnings.push(
-      `This is not a plan for ${request.destination}. It is the Seattle sample, shown so the trip can still be reviewed.`,
-    );
-  }
+export function buildSeattleSample(
+  partial?: Partial<TripRequest>,
+  reason?: string,
+  start = localIsoDate(),
+): Itinerary {
+  const request = seattleRequest(partial, start);
+  const askedFor = request.destination;
+  const askedForElsewhere = askedFor.toLowerCase() !== "seattle";
+  const warnings = askedForElsewhere
+    ? [
+        `Not a plan for ${askedFor}. Live place data did not come back, and this app will not invent ${askedFor}.`,
+        `${SEATTLE_SAMPLE_LABEL}. The stops below are Seattle practice data only.`,
+        reason ? `What failed: ${reason}` : "No live lookup was used.",
+      ]
+    : [
+        reason
+          ? `${SEATTLE_SAMPLE_LABEL}. ${reason} These stops are built-in Seattle sample data, not a live map reply.`
+          : `${SEATTLE_SAMPLE_LABEL}. Hours, weather, and drive times in this itinerary are built-in sample data for Seattle.`,
+      ];
   const grouped = SAMPLE_DAYS.slice(0, Math.min(3, Math.max(1, request.days))).map((ids) =>
     ids.map((id) => BY_ID.get(id)!),
   );
@@ -194,7 +201,7 @@ export function buildSeattleSample(partial?: Partial<TripRequest>, reason?: stri
     ...request,
     destination: "Seattle",
     days: grouped.length,
-    startDate: SEATTLE_SAMPLE_START,
+    startDate: start,
   };
   return {
     id: "seattle-sample",
@@ -203,12 +210,16 @@ export function buildSeattleSample(partial?: Partial<TripRequest>, reason?: stri
     request: sampleRequest,
     dataSource: "snapshot",
     sampleLabel: SEATTLE_SAMPLE_LABEL,
+    askedFor,
+    sampleStandsIn: !askedForElsewhere,
     warnings,
     days: grouped.map((places, index) =>
       scheduleDay({
         day: index + 1,
-        date: addDays(SEATTLE_SAMPLE_START, index),
-        places,
+        date: addDays(start, index),
+        places: places.map((place) =>
+          place.id === "sam" ? { ...place, openingHours: hoursOpenExcept(weekdayIndex(start)) } : place,
+        ),
         route,
         pace: "balanced",
         weather: SEATTLE_WEATHER[index],

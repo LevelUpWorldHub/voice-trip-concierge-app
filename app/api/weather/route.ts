@@ -1,15 +1,14 @@
 import { connection } from "next/server";
+import { validateCoordinate } from "@/lib/api-input";
 import { errorMessage, fetchJson, rethrowIfNeeded } from "@/lib/server/upstream";
 import { weatherFromDaily } from "@/lib/weather";
 
 export async function GET(request: Request) {
   await connection();
   const params = new URL(request.url).searchParams;
-  const lat = Number(params.get("lat"));
-  const lon = Number(params.get("lon"));
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return Response.json({ ok: false, error: "Missing coordinates." });
-  }
+  const coords = validateCoordinate(params.get("lat"), params.get("lon"));
+  if (!coords.ok) return Response.json(coords);
+  const { lat, lon } = coords.value;
   try {
     const url = new URL("https://api.open-meteo.com/v1/forecast");
     url.searchParams.set("latitude", String(lat));

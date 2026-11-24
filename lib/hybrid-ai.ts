@@ -125,24 +125,6 @@ function pathFrom(source: string | undefined): InferencePath {
   return "cloud";
 }
 
-function normalizeForEcho(value: string): string {
-  return value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-}
-
-/**
- * Chromium's Prompt API stub can return the prompt itself. Treat that, or any reply that
- * repeats our instruction text, as no answer so callers fall back to the template.
- */
-export function isEchoResponse(prompt: string, output: string): boolean {
-  const out = normalizeForEcho(output);
-  if (!out) return true;
-  const input = normalizeForEcho(prompt);
-  if (out === input) return true;
-  if (input.length >= 24 && (out.includes(input) || (out.length >= 24 && input.includes(out)))) return true;
-  const markers = ["speak two short sentences", "no markdown", "do not add stops", "parse one traveler message", "return json only"];
-  return markers.some((marker) => out.includes(marker));
-}
-
 async function generate(model: Model, prompt: string): Promise<{ text: string; path: InferencePath; latencyMs: number }> {
   const started = performance.now();
   const result = await Promise.race([
@@ -151,10 +133,8 @@ async function generate(model: Model, prompt: string): Promise<{ text: string; p
       setTimeout(() => reject(new Error("Firebase AI Logic timed out")), 20000);
     }),
   ]);
-  const text = result.response.text();
-  if (isEchoResponse(prompt, text)) throw new Error("model echoed the prompt");
   return {
-    text,
+    text: result.response.text(),
     path: pathFrom(result.response.inferenceSource),
     latencyMs: Math.round(performance.now() - started),
   };

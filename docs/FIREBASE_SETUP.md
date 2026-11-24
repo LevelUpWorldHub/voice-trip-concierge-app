@@ -62,7 +62,7 @@ Do not add `localhost` to the reCAPTCHA allowed domains. Firebase documents that
 On-device inference needs Chrome on desktop, version 139 or newer, and Firebase JS SDK 12.5.0 or newer (this app uses the current `firebase` package).
 
 1. Open `chrome://settings/help` and update Chrome.
-2. Set `chrome://flags/#prompt-api-for-gemini-nano-multimodal-input` to **Enabled** and restart Chrome.
+2. Open `chrome://flags`, set **Gemma 4 for Built-in AI** to **Enabled**, and restart Chrome.
 3. Optional, in the console: `await LanguageModel.availability()`. If it prints `downloadable`, run `await LanguageModel.create()` and let the model download.
 
 The concierge calls `initializeDeviceModel()` on the first Send or Speak gesture, then `generateContent()`. `PREFER_ON_DEVICE` uses Gemini Nano when it is ready and otherwise uses the cloud model named by `NEXT_PUBLIC_FIREBASE_CLOUD_MODEL`. The SDK default documented on 12 November 2026 is `gemini-3.5-flash-lite`. The badge reads the response `inferenceSource`: `on_device` or `in_cloud`.

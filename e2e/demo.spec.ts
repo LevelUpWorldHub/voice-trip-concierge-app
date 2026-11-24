@@ -8,7 +8,7 @@ test("captions-only submission demo", async ({ page }) => {
   await expect(page.getByTestId("inference-badge")).toContainText("Deterministic fallback");
 
   await caption(page, "Voice Trip Concierge watches the day, then waits for one tap before it changes a stop.");
-  await caption(page, "No Firebase project and no xAI key. The deterministic fallback and the labeled Seattle sample still run.");
+  await caption(page, "No Firebase project. The deterministic fallback and the labeled Seattle sample still run.");
 
   await page.getByTestId("load-sample").click();
   await expect(page.getByTestId("proposal-card")).toBeVisible();
@@ -41,11 +41,7 @@ test("captions-only submission demo", async ({ page }) => {
   await page.getByTestId("tab-status").click();
   await expect(page.getByText("Self-healing")).toBeVisible();
   await caption(page, "Self-healing records the fallback. A dead map service shows the labeled sample instead of an empty screen.");
-
-  await page.getByTestId("tab-plan").click();
-  await page.getByTestId("city-pulse").click();
-  await expect(page.getByTestId("pulse-reason")).toContainText("XAI_API_KEY");
-  await caption(page, "Grok city pulse is optional cited notes from xAI. It never plans the trip, and it stays off without a key.");
+  await expect(page.getByTestId("city-pulse")).toHaveCount(0);
   await page.waitForTimeout(1200);
 });
 
