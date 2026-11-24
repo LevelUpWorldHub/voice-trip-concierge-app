@@ -2,6 +2,7 @@
 
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { BASEMAP } from "@/lib/basemap";
 import type { Itinerary } from "@/lib/types";
 
 export default function MapCanvas({ itinerary, dayIndex }: { itinerary: Itinerary; dayIndex: number }) {
@@ -16,10 +17,7 @@ export default function MapCanvas({ itinerary, dayIndex }: { itinerary: Itinerar
       style={{ height: "22rem", width: "100%" }}
       className="w-full rounded-xl"
     >
-      <TileLayer
-        attribution='&copy; OpenStreetMap contributors &copy; CARTO'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      />
+      <TileLayer attribution={BASEMAP.attribution} maxZoom={BASEMAP.maxZoom} url={BASEMAP.url} />
       {line.length > 1 ? <Polyline positions={line} pathOptions={{ color: "#e2b15a", weight: 4 }} /> : null}
       {day.stops.map((stop, index) => (
         <CircleMarker

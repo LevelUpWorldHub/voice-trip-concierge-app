@@ -25,6 +25,13 @@ test("captions-only submission demo", async ({ page }) => {
 
   await page.getByTestId("tab-map").click();
   await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(page.locator(".leaflet-tile-pane img").first()).toHaveAttribute(
+    "src",
+    /^https:\/\/tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png$/,
+    { timeout: 15000 },
+  );
+  await expect(page.locator(".leaflet-control-attribution")).toContainText("OpenStreetMap");
+  await expect(page.locator(".leaflet-control-attribution")).not.toContainText("API KEY REQUIRED");
   await caption(page, "The day's stops and the driving line sit on an OpenStreetMap basemap.");
 
   await page.getByTestId("tab-watch").click();
